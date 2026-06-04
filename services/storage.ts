@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { Platform } from 'react-native';
 // Create a storage wrapper that handles different environments
 class StorageService {
   private inMemoryStorage: Map<string, string> = new Map();
@@ -113,58 +113,115 @@ class StorageService {
 
 // API helper with automatic token refresh
 class ApiService {
-  private baseUrl = 'http://10.0.2.2:8000/api';
+  private baseUrl: string;
+  private cache = new Map<string, { data: any; timestamp: number }>();
+  private cacheTTL = 30_000;
+
+constructor() {
+  if (__DEV__) {
+    // CHANGE THIS TO YOUR COMPUTER'S IP ADDRESS
+    this.baseUrl = 'http://10.13.18.228:8000/api';
+  } else {
+    this.baseUrl = 'https://your-production-domain.com/api';
+  }
+
+  console.log('API URL:', this.baseUrl);
+}
+
+  private getCached(key: string) {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > this.cacheTTL) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.data;
+  }
+
+  private setCache(key: string, data: any) {
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
 
   async request(endpoint: string, options: RequestInit = {}): Promise<any> {
     const url = `${this.baseUrl}${endpoint}`;
 
-    // Get token from storage
     let token = await storage.getItem('token');
 
     if (!token) {
       throw new Error('No authentication token available');
     }
 
-    // Set authorization header
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      ...options.headers,
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string> || {}),
     };
+
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    headers['Accept'] = 'application/json';
+    headers['Authorization'] = `Bearer ${token}`;
 
     const response = await fetch(url, {
       ...options,
       headers,
     });
 
-    // If unauthorized, try to refresh token by re-login
+    const responseContentType = response.headers.get('content-type') || '';
+
+    const parseJson = async (res: Response) => {
+      try {
+        return await res.json();
+      } catch {
+        const text = await res.text();
+        if (text.trim().startsWith('<')) {
+          throw new Error('Server returned an HTML page instead of JSON. Make sure you are logged in and the API URL is correct.');
+        }
+        throw new Error(`Invalid JSON response from server: ${text.slice(0, 200)}`);
+      }
+    };
+
     if (response.status === 401) {
       console.log('Token expired, attempting re-login');
       const refreshSuccess = await this.refreshToken();
 
       if (refreshSuccess) {
-        // Retry the request with new token
-        token = await storage.getItem('token');
-        headers.Authorization = `Bearer ${token}`;
+        token = (await storage.getItem('token')) || token;
+        headers['Authorization'] = `Bearer ${token}`;
         const retryResponse = await fetch(url, {
           ...options,
           headers,
         });
 
         if (retryResponse.ok) {
-          return retryResponse.json();
+          return parseJson(retryResponse);
         }
       }
 
-      // If refresh failed, throw error
-      throw new Error('Authentication failed');
+      await storage.removeItem('token');
+      await storage.removeItem('user');
+      throw new Error('Session expired. Please log in again.');
     }
 
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
+      if (responseContentType.includes('application/json')) {
+        const errorData = await parseJson(response);
+        throw new Error(errorData.message || `API request failed: ${response.status}`);
+      }
+      const errorText = await response.text();
+      throw new Error(errorText || `API request failed: ${response.status}`);
     }
 
-    return response.json();
+    if (responseContentType.includes('application/json')) {
+      return parseJson(response);
+    }
+
+    const text = await response.text();
+    if (text.trim().startsWith('<')) {
+      throw new Error('Server returned HTML instead of JSON. Check that the API URL is correct and you are properly authenticated.');
+    }
+
+    return text;
   }
 
   private async refreshToken(): Promise<boolean> {
@@ -242,26 +299,88 @@ class ApiService {
   }
 
   async getTransactions(): Promise<any> {
-    return this.request('/transactions');
+    const cached = this.getCached('/transactions');
+    if (cached) return cached;
+    const data = await this.request('/transactions');
+    this.setCache('/transactions', data);
+    return data;
   }
 
   async getTransaction(id: number): Promise<any> {
-    return this.request(`/transactions/${id}`);
+    const key = `/transactions/${id}`;
+    const cached = this.getCached(key);
+    if (cached) return cached;
+    const data = await this.request(key);
+    this.setCache(key, data);
+    return data;
   }
 
   async getServices(): Promise<any> {
-    return this.request('/services');
+    const cached = this.getCached('/services');
+    if (cached) return cached;
+    const data = await this.request('/services');
+    this.setCache('/services', data);
+    return data;
   }
 
-  async createTransaction(serviceId: number, totalPrice: number, paymentMethod: string = 'cash'): Promise<any> {
+  async createTransaction(serviceId: number, totalPrice: number, amount: number, paymentMethod: string = 'cash'): Promise<any> {
+    this.cache.delete('/transactions');
     return this.request('/transactions', {
       method: 'POST',
       body: JSON.stringify({
         service_id: serviceId,
         total_price: totalPrice,
+        amount: amount,
         payment_method: paymentMethod,
       }),
     });
+  }
+
+
+
+  async uploadTransactionProof(transactionId: number, uri: string): Promise<any> {
+    const url = `${this.baseUrl}/transactions/${transactionId}/payment-proof`;
+
+    if (!transactionId) {
+      throw new Error('Invalid transaction ID');
+    }
+
+    let token = await storage.getItem('token');
+
+    if (!token) {
+      throw new Error('No authentication token available');
+    }
+
+    const fileName = uri.split('/').pop();
+    const match = /\.(\w+)$/.exec(fileName || '');
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+    const form = new FormData();
+    form.append('payment_proof', {
+      uri,
+      name: fileName,
+      type,
+    } as any);
+
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: form,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${response.status} - ${errorText}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    }
+
+    return { success: true };
   }
 
   async getProfile(): Promise<any> {

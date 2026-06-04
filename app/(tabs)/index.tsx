@@ -28,8 +28,10 @@ interface Transaction {
   invoice_id: string;
   service: {
     service_name: string;
+    unit: string;
   };
   total_price: number;
+  amount: number;
   status: string;
   payment_method: string;
   created_at: string;
@@ -144,7 +146,7 @@ export default function DashboardScreen() {
 
         <View style={styles.serviceContainer}>
           <View style={styles.serviceIcon}>
-            <ShoppingBag size={20} color="#2563eb" />
+            <ShoppingBag size={20} color="#111827" />
           </View>
 
           <View style={{ flex: 1 }}>
@@ -153,7 +155,11 @@ export default function DashboardScreen() {
             </Text>
 
             <Text style={styles.paymentMethod}>
-              Payment: {item.payment_method}
+              {item.amount} {item.service.unit}
+            </Text>
+
+            <Text style={styles.paymentMethod}>
+              {item.payment_method}
             </Text>
           </View>
         </View>
@@ -280,7 +286,7 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#111827',
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 30,
@@ -292,7 +298,7 @@ const styles = StyleSheet.create({
   },
 
   greeting: {
-    color: '#bfdbfe',
+    color: '#e5e7eb',
     fontSize: 14,
     marginBottom: 4,
   },
@@ -307,7 +313,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#1d4ed8',
+    backgroundColor: '#1f2937',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -390,7 +396,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: '#dbeafe',
+    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -429,7 +435,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#2563eb',
+    color: '#111827',
   },
 
   rightSection: {
@@ -475,7 +481,7 @@ const styles = StyleSheet.create({
   },
 
   emptyButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#111827',
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 14,

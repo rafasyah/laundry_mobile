@@ -143,7 +143,7 @@ export default function ProfileScreen() {
           {/* Name */}
           <View style={styles.inputGroup}>
             <View style={styles.inputIcon}>
-              <User size={18} color="#2563eb" />
+              <User size={18} color="#111827" />
             </View>
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Nama Lengkap</Text>
@@ -177,7 +177,7 @@ export default function ProfileScreen() {
           {/* Phone */}
           <View style={styles.inputGroup}>
             <View style={styles.inputIcon}>
-              <Phone size={18} color="#2563eb" />
+              <Phone size={18} color="#111827" />
             </View>
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Nomor Telepon</Text>
@@ -195,7 +195,7 @@ export default function ProfileScreen() {
           {/* Address */}
           <View style={styles.inputGroup}>
             <View style={styles.inputIcon}>
-              <MapPin size={18} color="#2563eb" />
+              <MapPin size={18} color="#111827" />
             </View>
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Alamat</Text>
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   header: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#111827',
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 30,
@@ -274,12 +274,12 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: '#1d4ed8',
+    backgroundColor: '#1f2937',
     justifyContent: 'center',
     alignItems: 'center',
   },
   greeting: {
-    color: '#bfdbfe',
+    color: '#e5e7eb',
     fontSize: 14,
     marginBottom: 2,
   },
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   saveButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#111827',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -367,14 +367,14 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     borderRadius: 18,
     marginBottom: 14,
-    shadowColor: '#2563eb',
+    shadowColor: '#111827',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
   },
   saveButtonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: '#e5e7eb',
   },
   saveButtonText: {
     color: 'white',

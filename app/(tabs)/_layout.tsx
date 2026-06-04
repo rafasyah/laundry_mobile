@@ -52,8 +52,8 @@ export default function TabLayout() {
           paddingHorizontal: 10,
         },
 
-        tabBarActiveTintColor: '#2563eb',
-        tabBarInactiveTintColor: '#94a3b8',
+        tabBarActiveTintColor: '#111827',
+        tabBarInactiveTintColor: '#9ca3af',
       }}
     >
       <Tabs.Screen
@@ -70,7 +70,7 @@ export default function TabLayout() {
             >
               <House
                 size={24}
-                color={focused ? '#2563eb' : color}
+                color={focused ? '#111827' : color}
                 strokeWidth={2.5}
               />
             </View>
@@ -92,7 +92,7 @@ export default function TabLayout() {
             >
               <ShoppingBag
                 size={24}
-                color={focused ? '#2563eb' : color}
+                color={focused ? '#111827' : color}
                 strokeWidth={2.5}
               />
             </View>
@@ -114,7 +114,7 @@ export default function TabLayout() {
             >
               <User
                 size={24}
-                color={focused ? '#2563eb' : color}
+                color={focused ? '#111827' : color}
                 strokeWidth={2.5}
               />
             </View>
@@ -135,6 +135,6 @@ const styles = StyleSheet.create({
   },
 
   activeIconContainer: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: '#f3f4f6',
   },
 });

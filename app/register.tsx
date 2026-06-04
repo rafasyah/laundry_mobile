@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#111827',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   buttonDisabled: {
-    backgroundColor: '#94a3b8',
+    backgroundColor: '#9ca3af',
   },
   buttonText: {
     color: '#fff',
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   linkBold: {
-    color: '#2563eb',
+    color: '#111827',
     fontWeight: '600',
   },
 });

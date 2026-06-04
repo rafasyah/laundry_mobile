@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { api } from '../../services/storage';
 
 interface Transaction {
@@ -8,18 +9,22 @@ interface Transaction {
   invoice_id: string;
   service: {
     service_name: string;
+    unit: string;
   };
   total_price: number;
+  amount: number;
   status: string;
   payment_method: string;
   payment_status: string;
   created_at: string;
   paid_at?: string;
+  payment_proof?: string;
 }
 
 export default function TransactionDetailScreen() {
   const { id } = useLocalSearchParams();
   const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -53,7 +58,7 @@ export default function TransactionDetailScreen() {
   };
 
   const renderProgressBar = () => {
-    const steps = ['Antrian', 'Dicuci', 'Disetrika', 'Siap Diambil'];
+    const steps = ['Antrian', 'Dicusi', 'Disetrika', 'Siap Diambil'];
     const currentStep = transaction?.status === 'Antrian' || transaction?.status === 'pending' ? 0 :
                        transaction?.status === 'Dicuci' ? 1 :
                        transaction?.status === 'Disetrika' ? 2 : 3;
@@ -91,6 +96,38 @@ export default function TransactionDetailScreen() {
     );
   };
 
+  const handleUploadProof = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission Required', 'Please grant camera roll permissions to upload payment proof.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      await uploadProof(result.assets[0].uri);
+    }
+  };
+
+  const uploadProof = async (uri: string) => {
+    setUploadingProof(true);
+    try {
+      await api.uploadTransactionProof(Number(id), uri);
+      Alert.alert('Success', 'Payment proof uploaded successfully');
+      await fetchTransactionDetail();
+    } catch (error) {
+      console.error('Error uploading proof:', error);
+      Alert.alert('Error', 'Failed to upload payment proof');
+    } finally {
+      setUploadingProof(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -119,6 +156,11 @@ export default function TransactionDetailScreen() {
         </View>
 
         <View style={styles.detailRow}>
+          <Text style={styles.label}>Jumlah:</Text>
+          <Text style={styles.value}>{transaction.amount} {transaction.service.unit}</Text>
+        </View>
+
+        <View style={styles.detailRow}>
           <Text style={styles.label}>Harga:</Text>
           <Text style={styles.value}>Rp {transaction.total_price.toLocaleString()}</Text>
         </View>
@@ -144,6 +186,25 @@ export default function TransactionDetailScreen() {
             <Text style={styles.value}>{new Date(transaction.paid_at).toLocaleDateString()}</Text>
           </View>
         )}
+
+        {transaction.payment_proof ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Payment Proof:</Text>
+            <Image
+              source={{ uri: transaction.payment_proof }}
+              style={styles.paymentProofImage}
+              resizeMode="contain"
+            />
+          </View>
+        ) : null}
+
+        {!transaction.payment_proof && transaction.payment_method === 'transfer' && transaction.payment_status === 'pending' ? (
+          <TouchableOpacity style={styles.uploadProofButton} onPress={handleUploadProof} disabled={uploadingProof}>
+            <Text style={styles.uploadProofButtonText}>
+              {uploadingProof ? 'Uploading...' : 'Upload Payment Proof'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <View style={styles.section}>
@@ -161,7 +222,7 @@ export default function TransactionDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f1f5f9',
   },
   center: {
     flex: 1,
@@ -171,7 +232,7 @@ const styles = StyleSheet.create({
   invoiceId: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#0f172a',
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -193,23 +254,28 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 15,
-    color: '#333',
+    color: '#0f172a',
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#e5e7eb',
   },
   label: {
     fontSize: 14,
-    color: '#666',
+    color: '#64748b',
   },
   value: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#0f172a',
+  },
+  paymentProofImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
   },
   progressContainer: {
     flexDirection: 'row',
@@ -225,16 +291,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#ddd',
+    backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 5,
   },
   stepActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#111827',
   },
   stepText: {
-    color: '#666',
+    color: '#64748b',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -243,11 +309,11 @@ const styles = StyleSheet.create({
   },
   stepLabel: {
     fontSize: 12,
-    color: '#666',
+    color: '#64748b',
     textAlign: 'center',
   },
   stepLabelActive: {
-    color: '#007AFF',
+    color: '#111827',
     fontWeight: 'bold',
   },
   stepLine: {
@@ -256,18 +322,30 @@ const styles = StyleSheet.create({
     left: '50%',
     right: '-50%',
     height: 2,
-    backgroundColor: '#ddd',
+    backgroundColor: '#e5e7eb',
     zIndex: -1,
   },
   stepLineActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#111827',
   },
   backButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#111827',
     margin: 20,
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  uploadProofButton: {
+    backgroundColor: '#111827',
+    margin: 20,
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  uploadProofButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   backButtonText: {
     color: 'white',

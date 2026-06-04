@@ -43,7 +43,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Wind-Dry</Text>
+       <Text style={styles.title}>Win-Dry</Text>
       <Text style={styles.subtitle}>Login untuk melanjutkan</Text>
 
       <TextInput
@@ -112,14 +112,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#111827',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#e5e7eb',
   },
   buttonText: {
     color: '#fff',
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   linkBold: {
-    color: '#2563eb',
+    color: '#111827',
     fontWeight: '600',
   },
 });

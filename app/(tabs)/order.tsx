@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import {
   View,
   Text,
@@ -9,6 +10,7 @@ import {
   Alert,
   StatusBar,
   ScrollView,
+  Image,
 } from 'react-native';
 
 import { api } from '../../services/storage';
@@ -34,11 +36,13 @@ export default function OrderScreen() {
   const [services, setServices] = useState<Service[]>([]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [quantity, setQuantity] = useState('1');
-  const [paymentMethod, setPaymentMethod] =
-    useState<'cash' | 'transfer'>('cash');
+   const [paymentMethod, setPaymentMethod] =
+     useState<'cash' | 'transfer'>('cash');
 
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+   const [transferProofUri, setTransferProofUri] = useState<string | null>(null);
+
+   const [loading, setLoading] = useState(false);
+   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchServices();
@@ -76,56 +80,86 @@ export default function OrderScreen() {
     setQuantity((qty + 1).toString());
   };
 
-  const decreaseQty = () => {
-    const qty = parseInt(quantity) || 1;
+   const decreaseQty = () => {
+     const qty = parseInt(quantity) || 1;
 
-    if (qty > 1) {
-      setQuantity((qty - 1).toString());
-    }
-  };
+     if (qty > 1) {
+       setQuantity((qty - 1).toString());
+     }
+   };
 
-  const handleCreateOrder = async () => {
-    if (!selectedService) {
-      Alert.alert('Error', 'Please select a service');
-      return;
-    }
+   const handleTransferPress = async () => {
+     // Set payment method to transfer
+     setPaymentMethod('transfer');
+     
+     // Request media library permissions
+     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+     if (!permissionResult.granted) {
+       Alert.alert('Permission Required', 'Please grant camera roll permissions to upload payment proof.');
+       return;
+     }
+     
+     // Launch image picker
+     const result = await ImagePicker.launchImageLibraryAsync({
+       mediaTypes: ['images'],
+       allowsEditing: true,
+       quality: 0.8,
+     });
+     
+     if (!result.canceled && result.assets[0]) {
+       setTransferProofUri(result.assets[0].uri);
+     }
+   };
 
-    const qty = parseInt(quantity);
+   const handleCreateOrder = async () => {
+     if (!selectedService) {
+       Alert.alert('Error', 'Please select a service');
+       return;
+     }
 
-    if (qty < 1) {
-      Alert.alert('Error', 'Quantity must be at least 1');
-      return;
-    }
+     const qty = parseInt(quantity);
 
-    try {
-      setSubmitting(true);
+     if (qty < 1) {
+       Alert.alert('Error', 'Quantity must be at least 1');
+       return;
+     }
 
-      await api.createTransaction(
-        selectedService.id,
-        calculateTotal(),
-        paymentMethod
-      );
+     try {
+       setSubmitting(true);
 
-      Alert.alert('Sukses!', 'Pesanan berhasil dibuat!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            setSelectedService(null);
-            setQuantity('1');
-          },
-        },
-      ]);
-    } catch (error) {
-      console.error('Error creating order:', error);
+        const transactionData = await api.createTransaction(
+          selectedService.id,
+          calculateTotal(),
+          qty,
+          paymentMethod
+        );
 
-      Alert.alert(
-        'Error',
-        'Failed to create order. Please try again.'
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
+        // If transfer and we have a proof URI, upload it
+        if (paymentMethod === 'transfer' && transferProofUri) {
+          await api.uploadTransactionProof(transactionData.transaction.id, transferProofUri);
+        }
+
+       Alert.alert('Sukses!', 'Pesanan berhasil dibuat!', [
+         {
+           text: 'OK',
+           onPress: () => {
+             setSelectedService(null);
+             setQuantity('1');
+             setTransferProofUri(null);
+           },
+         },
+       ]);
+     } catch (error) {
+       console.error('Error creating order:', error);
+
+       Alert.alert(
+         'Error',
+         'Failed to create order. Please try again.'
+       );
+     } finally {
+       setSubmitting(false);
+     }
+   };
 
   const renderService = ({ item }: { item: Service }) => {
     const selected = selectedService?.id === item.id;
@@ -146,10 +180,10 @@ export default function OrderScreen() {
               selected && styles.serviceIconSelected,
             ]}
           >
-            <Sparkles
-              size={20}
-              color={selected ? '#2563eb' : '#64748b'}
-            />
+             <Sparkles
+               size={20}
+               color={selected ? '#1f2937' : '#64748b'}
+             />
           </View>
 
           <View>
@@ -163,9 +197,9 @@ export default function OrderScreen() {
           </View>
         </View>
 
-        {selected && (
-          <CircleCheckBig size={24} color="#2563eb" />
-        )}
+         {selected && (
+           <CircleCheckBig size={24} color="#1f2937" />
+         )}
       </TouchableOpacity>
     );
   };
@@ -217,12 +251,12 @@ export default function OrderScreen() {
           {selectedService && (
             <View style={styles.orderCard}>
               <View style={styles.orderHeader}>
-                <View style={styles.orderIcon}>
-                  <ShoppingBag
-                    size={22}
-                    color="#2563eb"
-                  />
-                </View>
+                 <View style={styles.orderIcon}>
+                   <ShoppingBag
+                     size={22}
+                     color="#1f2937"
+                   />
+                 </View>
 
                 <View>
                   <Text style={styles.selectedServiceName}>
@@ -242,12 +276,12 @@ export default function OrderScreen() {
               </Text>
 
               <View style={styles.quantityWrapper}>
-                <TouchableOpacity
-                  style={styles.qtyButton}
-                  onPress={decreaseQty}
-                >
-                  <Minus size={18} color="#2563eb" />
-                </TouchableOpacity>
+                 <TouchableOpacity
+                   style={styles.qtyButton}
+                   onPress={decreaseQty}
+                 >
+                   <Minus size={18} color="#1f2937" />
+                 </TouchableOpacity>
 
                 <TextInput
                   style={styles.quantityInput}
@@ -256,12 +290,12 @@ export default function OrderScreen() {
                   keyboardType="numeric"
                 />
 
-                <TouchableOpacity
-                  style={styles.qtyButton}
-                  onPress={increaseQty}
-                >
-                  <Plus size={18} color="#2563eb" />
-                </TouchableOpacity>
+                 <TouchableOpacity
+                   style={styles.qtyButton}
+                   onPress={increaseQty}
+                 >
+                   <Plus size={18} color="#1f2937" />
+                 </TouchableOpacity>
               </View>
 
               <Text style={styles.unitText}>
@@ -273,25 +307,26 @@ export default function OrderScreen() {
               </Text>
 
               <View style={styles.paymentContainer}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={[
-                    styles.paymentCard,
-                    paymentMethod === 'cash' &&
-                      styles.paymentCardSelected,
-                  ]}
-                  onPress={() =>
-                    setPaymentMethod('cash')
-                  }
-                >
-                  <Wallet
-                    size={22}
-                    color={
-                      paymentMethod === 'cash'
-                        ? '#2563eb'
-                        : '#64748b'
-                    }
-                  />
+                 <TouchableOpacity
+                   activeOpacity={0.8}
+                   style={[
+                     styles.paymentCard,
+                     paymentMethod === 'cash' &&
+                       styles.paymentCardSelected,
+                   ]}
+                   onPress={() => {
+                     setPaymentMethod('cash');
+                     setTransferProofUri(null);
+                   }}
+                 >
+                   <Wallet
+                     size={22}
+                     color={
+                       paymentMethod === 'cash'
+                         ? '#1f2937'
+                         : '#64748b'
+                     }
+                   />
 
                   <Text
                     style={[
@@ -304,38 +339,59 @@ export default function OrderScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={[
-                    styles.paymentCard,
-                    paymentMethod === 'transfer' &&
-                      styles.paymentCardSelected,
-                  ]}
-                  onPress={() =>
-                    setPaymentMethod('transfer')
-                  }
-                >
-                  <CreditCard
-                    size={22}
-                    color={
-                      paymentMethod === 'transfer'
-                        ? '#2563eb'
-                        : '#64748b'
-                    }
-                  />
+                 <TouchableOpacity
+                   activeOpacity={0.8}
+                   style={[
+                     styles.paymentCard,
+                     paymentMethod === 'transfer' &&
+                       styles.paymentCardSelected,
+                   ]}
+                   onPress={() => handleTransferPress()}
+                 >
+                   <CreditCard
+                     size={22}
+                     color={
+                       paymentMethod === 'transfer'
+                         ? '#1f2937'
+                         : '#64748b'
+                     }
+                   />
 
-                  <Text
-                    style={[
-                      styles.paymentText,
-                      paymentMethod === 'transfer' &&
-                        styles.paymentTextSelected,
-                    ]}
-                  >
-                    Transfer
-                  </Text>
+                <Text
+  style={[
+    styles.paymentText,
+    paymentMethod === 'transfer' &&
+      styles.paymentTextSelected,
+  ]}
+>
+  {transferProofUri
+    ? 'Bukti Dipilih'
+    : 'Upload Bukti Transfer'}
+</Text>-
                 </TouchableOpacity>
               </View>
+{paymentMethod === 'transfer' && transferProofUri && (
+  <View style={styles.previewContainer}>
+    <Text style={styles.previewTitle}>
+      Bukti Transfer
+    </Text>
 
+    <Image
+      source={{ uri: transferProofUri }}
+      style={styles.previewImage}
+      resizeMode="cover"
+    />
+
+    <TouchableOpacity
+      style={styles.changeImageButton}
+      onPress={handleTransferPress}
+    >
+      <Text style={styles.changeImageText}>
+        Ganti Foto
+      </Text>
+    </TouchableOpacity>
+  </View>
+)}
               <View style={styles.totalCard}>
                 <Text style={styles.totalLabel}>
                   Total Pembayaran
@@ -388,20 +444,20 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
 
-  header: {
-    backgroundColor: '#2563eb',
-    paddingTop: 60,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
+   header: {
+     backgroundColor: '#111827',
+     paddingTop: 60,
+     paddingHorizontal: 24,
+     paddingBottom: 32,
+     borderBottomLeftRadius: 30,
+     borderBottomRightRadius: 30,
+   },
 
-  smallTitle: {
-    color: '#bfdbfe',
-    fontSize: 14,
-    marginBottom: 6,
-  },
+   smallTitle: {
+     color: '#e5e7eb',
+     fontSize: 14,
+     marginBottom: 6,
+   },
 
   title: {
     color: 'white',
@@ -409,12 +465,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  subtitle: {
-    color: '#dbeafe',
-    fontSize: 14,
-    marginTop: 8,
-    lineHeight: 22,
-  },
+   subtitle: {
+     color: '#e5e7eb',
+     fontSize: 14,
+     marginTop: 8,
+     lineHeight: 22,
+   },
 
   content: {
     padding: 20,
@@ -446,11 +502,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
-  serviceCardSelected: {
-    borderWidth: 2,
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
-  },
+   serviceCardSelected: {
+     borderWidth: 2,
+     borderColor: '#1f2937',
+     backgroundColor: '#f3f4f6',
+   },
 
   serviceLeft: {
     flexDirection: 'row',
@@ -467,9 +523,9 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
 
-  serviceIconSelected: {
-    backgroundColor: '#dbeafe',
-  },
+   serviceIconSelected: {
+     backgroundColor: '#f3f4f6',
+   },
 
   serviceName: {
     fontSize: 16,
@@ -505,15 +561,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
 
-  orderIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 18,
-    backgroundColor: '#dbeafe',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
+   orderIcon: {
+     width: 58,
+     height: 58,
+     borderRadius: 18,
+     backgroundColor: '#f3f4f6',
+     justifyContent: 'center',
+     alignItems: 'center',
+     marginRight: 14,
+   },
 
   selectedServiceName: {
     fontSize: 18,
@@ -540,14 +596,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
-  qtyButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+   qtyButton: {
+     width: 50,
+     height: 50,
+     borderRadius: 14,
+     backgroundColor: '#f3f4f6',
+     justifyContent: 'center',
+     alignItems: 'center',
+   },
 
   quantityInput: {
     flex: 1,
@@ -583,10 +639,10 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
 
-  paymentCardSelected: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
-  },
+   paymentCardSelected: {
+     borderColor: '#1f2937',
+     backgroundColor: '#f3f4f6',
+   },
 
   paymentText: {
     fontSize: 14,
@@ -595,22 +651,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  paymentTextSelected: {
-    color: '#2563eb',
-  },
+   paymentTextSelected: {
+     color: '#1f2937',
+   },
 
-  totalCard: {
-    backgroundColor: '#2563eb',
-    borderRadius: 22,
-    padding: 22,
-    marginBottom: 24,
-  },
+   totalCard: {
+     backgroundColor: '#111827',
+     borderRadius: 22,
+     padding: 22,
+     marginBottom: 24,
+   },
 
-  totalLabel: {
-    fontSize: 14,
-    color: '#bfdbfe',
-    marginBottom: 8,
-  },
+   totalLabel: {
+     fontSize: 14,
+     color: '#e5e7eb',
+     marginBottom: 8,
+   },
 
   totalAmount: {
     fontSize: 30,
@@ -618,12 +674,12 @@ const styles = StyleSheet.create({
     color: 'white',
   },
 
-  orderButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 18,
-    borderRadius: 18,
-    alignItems: 'center',
-  },
+   orderButton: {
+     backgroundColor: '#111827',
+     paddingVertical: 18,
+     borderRadius: 18,
+     alignItems: 'center',
+   },
 
   orderButtonDisabled: {
     opacity: 0.6,
@@ -634,4 +690,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+
+  previewContainer: {
+  marginBottom: 24,
+},
+
+previewTitle: {
+  fontSize: 15,
+  fontWeight: '600',
+  color: '#334155',
+  marginBottom: 12,
+},
+
+previewImage: {
+  width: '100%',
+  height: 220,
+  borderRadius: 18,
+  backgroundColor: '#e5e7eb',
+},
+
+changeImageButton: {
+  marginTop: 12,
+  backgroundColor: '#f3f4f6',
+  paddingVertical: 12,
+  borderRadius: 14,
+  alignItems: 'center',
+},
+
+changeImageText: {
+  color: '#111827',
+  fontWeight: '600',
+},
 });
